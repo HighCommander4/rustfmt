@@ -45,12 +45,16 @@ impl Rewrite for ast::Local {
             let mut infix = String::new();
 
             if let Some(ref ty) = self.ty {
-                // 2 = ": ".len()
+                // 2 = ": ".len(), or 3 = " : ".len()
+                let len = if context.config.type_annotation_colon_space { 3 } else { 2 };
+                let indent = offset + last_line_width(&result) + len;
                 // 1 = ;
-                let indent = offset + last_line_width(&result) + 2;
                 let budget = try_opt!(width.checked_sub(indent.width() + 1));
                 let rewrite = try_opt!(ty.rewrite(context, budget, indent));
 
+                if context.config.type_annotation_colon_space {
+                    infix.push_str(" ");
+                }
                 infix.push_str(": ");
                 infix.push_str(&rewrite);
             }
@@ -1034,11 +1038,13 @@ pub fn rewrite_static(prefix: &str,
                       expr_opt: Option<&ptr::P<ast::Expr>>,
                       context: &RewriteContext)
                       -> Option<String> {
-    let prefix = format!("{}{} {}{}: ",
+    let type_annotation_spacing = if context.config.type_annotation_colon_space { " " } else { "" };                      
+    let prefix = format!("{}{} {}{}{}: ",
                          format_visibility(vis),
                          prefix,
                          format_mutability(mutability),
-                         ident);
+                         ident,
+                         type_annotation_spacing);
     // 2 = " =".len()
     let ty_str = try_opt!(ty.rewrite(context,
                                      context.config.max_width - context.block_indent.width() -
@@ -1117,6 +1123,9 @@ impl Rewrite for ast::Arg {
             let mut result = try_opt!(self.pat.rewrite(context, width, offset));
 
             if self.ty.node != ast::TyKind::Infer {
+                if context.config.type_annotation_colon_space {
+                    result.push_str(" ");
+                }
                 result.push_str(": ");
                 let max_width = try_opt!(width.checked_sub(result.len()));
                 let ty_str = try_opt!(self.ty.rewrite(context, max_width, offset + result.len()));

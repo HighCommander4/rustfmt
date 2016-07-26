@@ -449,6 +449,9 @@ impl Rewrite for ast::TyParam {
         let mut result = String::with_capacity(128);
         result.push_str(&self.ident.to_string());
         if !self.bounds.is_empty() {
+            if context.config.type_annotation_colon_space {
+                result.push_str(" ");
+            }
             result.push_str(": ");
 
             let bounds: String = try_opt!(self.bounds
